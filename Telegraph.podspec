@@ -12,7 +12,7 @@ Pod::Spec.new do |s|
   s.homepage = 'https://github.com/Building42/Telegraph'
   s.documentation_url = 'https://building42.github.io/Telegraph/'
 
-  s.source = { :git => 'https://github.com/Building42/Telegraph.git', :tag => s.version }
+  s.source = { :git => 'https://github.com/solos/Telegraph.git', :tag => s.version }
   s.source_files = 'Sources/**/*.swift'
   s.swift_version = '5.0'
 
