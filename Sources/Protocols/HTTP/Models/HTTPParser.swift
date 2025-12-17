@@ -39,6 +39,10 @@ public final class HTTPParser {
   private var headerValueData = Data()
   private var headerChunkWasValue = false
 
+  private var bodyFileHandle: FileHandle?
+  private var bodyFileURL: URL?
+  private let maxMemoryBodySize = 10 * 1024 * 1024 // 10MB
+
   /// Creates an HTTP parser.
   public init() {
     rawParser = HTTPRawParser.make()
@@ -122,6 +126,14 @@ public final class HTTPParser {
     headerKeyData.count = 0
     headerValueData.count = 0
     headerChunkWasValue = false
+
+    if #available(iOS 13.0, *) {
+        try? bodyFileHandle?.close()
+    } else {
+        bodyFileHandle?.closeFile()
+    }
+    bodyFileHandle = nil
+    bodyFileURL = nil
   }
 }
 
@@ -211,9 +223,21 @@ extension HTTPParser {
     // Set the HTTP version
     message.version = rawParser.httpVersion
 
-    // Reserve capacity for the body
+    // Reserve capacity for the body or prepare file
     if let contentLength = message.headers.contentLength {
-      message.body.reserveCapacity(contentLength)
+      if contentLength > maxMemoryBodySize {
+        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        if FileManager.default.createFile(atPath: tempURL.path, contents: nil, attributes: nil),
+           let handle = try? FileHandle(forWritingTo: tempURL) {
+            self.bodyFileURL = tempURL
+            self.bodyFileHandle = handle
+            if let request = message as? HTTPRequest {
+                request.bodyFile = tempURL
+            }
+        }
+      } else {
+        message.body.reserveCapacity(contentLength)
+      }
     }
 
     // Complete the last header
@@ -226,7 +250,12 @@ extension HTTPParser {
 
   /// Raised when the parser parsed part of the body.
   func parserDidParseBody(_ rawParser: HTTPRawParser, chunk: ChunkPointer?, count: Int) -> Int32 {
-    message?.body.append(chunk, count: count)
+    if let handle = bodyFileHandle, let chunk = chunk {
+        let data = Data(bytes: chunk, count: count)
+        handle.write(data)
+    } else {
+        message?.body.append(chunk, count: count)
+    }
     return continueParsing
   }
 

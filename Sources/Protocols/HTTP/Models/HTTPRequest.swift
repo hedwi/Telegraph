@@ -14,12 +14,14 @@ open class HTTPRequest: HTTPMessage {
   public var method: HTTPMethod
   public var uri: URI
   public var params = Params()
+  public var bodyFile: URL?
 
   /// Creates a new HTTPRequest.
   public init(_ method: HTTPMethod = .GET, uri: URI = .root, version: HTTPVersion = .default,
-              headers: HTTPHeaders = .empty, body: Data = Data()) {
+              headers: HTTPHeaders = .empty, body: Data = Data(), bodyFile: URL? = nil) {
     self.method = method
     self.uri = uri
+    self.bodyFile = bodyFile
     super.init(version: version, headers: headers, body: body)
   }
 
